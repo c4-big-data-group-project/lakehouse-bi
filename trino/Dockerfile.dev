@@ -1,0 +1,28 @@
+ARG X__TRINO__IMAGE__TAG
+
+# This image is just for envsubst utility. It is
+# downloaded in a separate stage because trinodb/trino
+# image does not provide any package manager.
+FROM debian:bullseye-slim as builder
+RUN apt-get update && apt-get install -y gettext-base
+
+# Builds Trino with catalog configured to use
+# Hive Metastore, Minio, and Iceberg.
+FROM trinodb/trino:${X__TRINO__IMAGE__TAG}
+
+USER root
+COPY --from=builder /usr/bin/envsubst /usr/local/bin/envsubst
+RUN chmod +x /usr/local/bin/envsubst
+RUN /usr/local/bin/envsubst --version
+USER trino
+
+COPY catalog /etc/trino/catalog/
+COPY config.properties.template /etc/trino/config.properties.template
+COPY jvm.config /etc/trino/
+COPY node.properties /etc/trino/
+
+COPY entrypoint.sh /entrypoint-wrapper.sh
+USER root
+RUN chmod +x /entrypoint-wrapper.sh
+USER trino
+ENTRYPOINT ["/entrypoint-wrapper.sh"]

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+    <!-- Use external PostgreSQL database to store metadata. -->
+    <property>
+        <name>javax.jdo.option.ConnectionURL</name>
+        <value>jdbc:postgresql://${GP2__HIVE_METASTORE__POSTGRES__HOST_NAME}:${GP2__HIVE_METASTORE__POSTGRES__PORT}/${GP2__HIVE_METASTORE__POSTGRES__DB}</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionDriverName</name>
+        <value>org.postgresql.Driver</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionUserName</name>
+        <value>${GP2__HIVE_METASTORE__POSTGRES__USER}</value>
+    </property>
+    <property>
+        <name>javax.jdo.option.ConnectionPassword</name>
+        <value>${GP2__HIVE_METASTORE__POSTGRES__PASSWORD}</value>
+    </property>
+
+    <!-- Create the database schema automatically. -->
+    <property>
+        <name>datanucleus.schema.autoCreateAll</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>datanucleus.fixedDatastore</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>datanucleus.autoCreateSchema</name>
+        <value>true</value>
+    </property>
+
+    <!-- Configure Minio connection so that the Hive Metastore
+    can create necessary schemas in the Minio when requested. -->
+    <property>
+        <name>fs.s3a.impl</name>
+        <value>org.apache.hadoop.fs.s3a.S3AFileSystem</value>
+    </property>
+    <property>
+        <name>fs.s3a.endpoint</name>
+        <value>http://${GP2__MINIO__HOST_NAME}:${GP2__MINIO__API__PORT}</value>
+    </property>
+    <property>
+        <name>fs.s3a.access.key</name>
+        <value>${GP2__MINIO__USER}</value>
+    </property>
+    <property>
+        <name>fs.s3a.secret.key</name>
+        <value>${GP2__MINIO__PASSWORD}</value>
+    </property>
+    <property>
+        <name>fs.s3a.path.style.access</name>
+        <value>true</value>
+    </property>
+    <property>
+        <name>fs.s3a.connection.ssl.enabled</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>fs.s3a.aws.credentials.provider</name>
+        <value>org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider</value>
+    </property>
+</configuration>

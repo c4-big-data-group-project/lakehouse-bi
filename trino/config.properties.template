@@ -1,0 +1,4 @@
+coordinator=true
+node-scheduler.include-coordinator=true
+http-server.http.port=${GP2__TRINO__PORT}
+discovery.uri=http://${GP2__TRINO__HOST_NAME}:${GP2__TRINO__PORT}

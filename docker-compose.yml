@@ -1,0 +1,148 @@
+services:
+  # ----------- MINIO -----------
+
+  # The S3-compatible storage designed to store
+  # initial (raw) dataset as well as the data marts.
+  minio:
+    image: "quay.io/minio/minio:${GP2__MINIO__IMAGE__TAG?error}"
+    command:
+      [
+        "minio",
+        "server",
+        "/data",
+        "--address",
+        ":${GP2__MINIO__API__PORT?error}",
+        "--console-address",
+        ":${GP2__MINIO__UI__PORT?error}",
+      ]
+    environment:
+      - "MINIO_ROOT_USER=${GP2__MINIO__USER?error}"
+      - "MINIO_ROOT_PASSWORD=${GP2__MINIO__PASSWORD?error}"
+    volumes:
+      - "minio-data:/data"
+    ports:
+      - "127.0.0.1:${GP2__MINIO__API__LOCAL_PORT?error}:${GP2__MINIO__API__PORT?error}"
+      - "127.0.0.1:${GP2__MINIO__UI__LOCAL_PORT?error}:${GP2__MINIO__UI__PORT?error}"
+    hostname: "${GP2__MINIO__HOST_NAME?error}"
+    networks:
+      - "private"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:${GP2__MINIO__API__PORT?error}/minio/health/live >/dev/null",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  # ------ HIVE METASTORE -------
+
+  # PostgreSQL database designed to store Hive Metastore
+  # meta information about schemas, tables, views, etc.
+  # that exist in the Minio.
+  hive-metastore-postgres:
+    image: "postgres:${GP2__HIVE_METASTORE__POSTGRES__IMAGE__TAG?error}"
+    command: "postgres -p ${GP2__HIVE_METASTORE__POSTGRES__PORT?error}"
+    environment:
+      - "POSTGRES_DB=${GP2__HIVE_METASTORE__POSTGRES__DB?error}"
+      - "POSTGRES_USER=${GP2__HIVE_METASTORE__POSTGRES__USER?error}"
+      - "POSTGRES_PASSWORD=${GP2__HIVE_METASTORE__POSTGRES__PASSWORD?error}"
+    volumes:
+      - "hive-metastore-postgres-data:/var/lib/postgresql/data"
+    hostname: "${GP2__HIVE_METASTORE__POSTGRES__HOST_NAME?error}"
+    networks:
+      - "private"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-p",
+          "${GP2__HIVE_METASTORE__POSTGRES__PORT?error}",
+          "-U",
+          "${GP2__HIVE_METASTORE__POSTGRES__USER?error}",
+          "-d",
+          "${GP2__HIVE_METASTORE__POSTGRES__DB?error}",
+        ]
+      interval: "10s"
+      retries: 5
+      start_period: "5s"
+
+  # Hive Metastore stores meta information about the
+  # schemas, tables, views, etc. that exist in the
+  # Minio. This service is used by Trino to correctly
+  # process incoming SQL-queries (e.g. substitute
+  # abstract data source paths with real paths).
+  hive-metastore:
+    build:
+      context: "metastore"
+      dockerfile: "Dockerfile.${MOD?error}"
+      args:
+        - "X__HIVE_METASTORE__IMAGE__TAG=${GP2__HIVE_METASTORE__IMAGE__TAG?error}"
+    environment:
+      - "METASTORE_PORT=${GP2__HIVE_METASTORE__PORT?error}"
+      - "GP2__HIVE_METASTORE__POSTGRES__HOST_NAME=${GP2__HIVE_METASTORE__POSTGRES__HOST_NAME?error}"
+      - "GP2__HIVE_METASTORE__POSTGRES__PORT=${GP2__HIVE_METASTORE__POSTGRES__PORT?error}"
+      - "GP2__HIVE_METASTORE__POSTGRES__DB=${GP2__HIVE_METASTORE__POSTGRES__DB?error}"
+      - "GP2__HIVE_METASTORE__POSTGRES__USER=${GP2__HIVE_METASTORE__POSTGRES__USER?error}"
+      - "GP2__HIVE_METASTORE__POSTGRES__PASSWORD=${GP2__HIVE_METASTORE__POSTGRES__PASSWORD?error}"
+      - "GP2__HIVE_METASTORE__DEFAULT_WAREHOUSE_DIR=${GP2__HIVE_METASTORE__DEFAULT_WAREHOUSE_DIR?error}"
+      - "GP2__MINIO__HOST_NAME=${GP2__MINIO__HOST_NAME?error}"
+      - "GP2__MINIO__API__PORT=${GP2__MINIO__API__PORT?error}"
+      - "GP2__MINIO__USER=${GP2__MINIO__USER?error}"
+      - "GP2__MINIO__PASSWORD=${GP2__MINIO__PASSWORD?error}"
+    volumes:
+      - "./logs/metastore/:/tmp/root/"
+    hostname: "${GP2__HIVE_METASTORE__HOST_NAME?error}"
+    networks:
+      - "private"
+    depends_on:
+      hive-metastore-postgres:
+        condition: "service_healthy"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "bash -c 'exec 3<>/dev/tcp/localhost/${GP2__HIVE_METASTORE__PORT?error}'",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 15
+
+  # ----------- TRINO -----------
+
+  # Trino coordinator and worker in one node. Configured
+  # to use Minio with Iceberg.
+  trino-coordinator-and-worker:
+    build:
+      context: "trino"
+      dockerfile: "Dockerfile.${MOD?error}"
+      args:
+        - "X__TRINO__IMAGE__TAG=${GP2__TRINO__IMAGE__TAG?error}"
+    environment:
+      - "GP2__TRINO__HOST_NAME=${GP2__TRINO__HOST_NAME?error}"
+      - "GP2__TRINO__PORT=${GP2__TRINO__PORT?error}"
+      - "GP2__MINIO__HOST_NAME=${GP2__MINIO__HOST_NAME?error}"
+      - "GP2__MINIO__API__PORT=${GP2__MINIO__API__PORT?error}"
+      - "GP2__MINIO__USER=${GP2__MINIO__USER?error}"
+      - "GP2__MINIO__PASSWORD=${GP2__MINIO__PASSWORD?error}"
+      - "GP2__HIVE_METASTORE__PORT=${GP2__HIVE_METASTORE__PORT?error}"
+      - "GP2__HIVE_METASTORE__HOST_NAME=${GP2__HIVE_METASTORE__HOST_NAME?error}"
+    ports:
+      - "127.0.0.1:${GP2__TRINO__LOCAL_PORT}:${GP2__TRINO__PORT?error}"
+    hostname: "${GP2__TRINO__HOST_NAME?error}"
+    networks:
+      - "private"
+    depends_on:
+      hive-metastore:
+        condition: "service_healthy"
+      minio:
+        condition: "service_healthy"
+
+volumes:
+  minio-data: {}
+  hive-metastore-postgres-data: {}
+
+networks:
+  private: {}
