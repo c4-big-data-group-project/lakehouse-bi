@@ -1,2 +1,10 @@
+.DS_Store
+__pycache__/
+*.pyc
 logs
 .env
+etl/data/
+etl/reports/*.md
+etl/manifests/*.json
+!etl/reports/.gitkeep
+!etl/manifests/.gitkeep
