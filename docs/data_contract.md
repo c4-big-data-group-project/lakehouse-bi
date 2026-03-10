@@ -6,23 +6,27 @@ Owner: Person 2 (Data ingestion, transforms, marts)
 ## 1) Dataset selection and source
 
 Primary dataset: **Open Food Facts product dump**
+
 - Format in source: `CSV.GZ` (tab-separated content inside gzip)
 - Projected processing format: `CSV` (comma-separated, selected columns)
 
 Sources:
-- Kaggle reference page: https://www.kaggle.com/datasets/konradb/open-food-facts
+
+- Kaggle reference page: <https://www.kaggle.com/datasets/konradb/open-food-facts>
 - Direct dump URL used in pipeline:
-  - https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/en.openfoodfacts.org.products.csv.gz
+  - <https://openfoodfacts-ds.s3.eu-west-3.amazonaws.com/en.openfoodfacts.org.products.csv.gz>
 - Fallback URL (if primary unavailable):
-  - https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz
+  - <https://static.openfoodfacts.org/data/en.openfoodfacts.org.products.csv.gz>
 
 Licensing note:
+
 - Open Food Facts data is published under Open Database License (ODbL).
 - This project uses data for educational analytics; follow official license terms for redistribution.
 
 ## 2) Requirement 1.1 sizing strategy (>1GB)
 
 `full` mode downloads one official source file:
+
 - `en.openfoodfacts.org.products.csv.gz`
 - expected size (HEAD): about **1.17 GB** (~1,169,499,939 bytes)
 
@@ -33,11 +37,13 @@ This intentionally keeps payload only slightly above 1GB (minimum requirement) a
 Bucket: `warehouse`
 
 Prefixes:
+
 - raw: `raw/open_food_facts/...`
 - iceberg staging: `iceberg/open_food_facts/stg/...`
 - marts: `marts/open_food_facts/...`
 
 Mode layouts:
+
 - sample:
   - `raw/open_food_facts/sample/processing/openfoodfacts_products_sample.csv`
 - full:
@@ -49,6 +55,7 @@ Mode layouts:
 Raw external table: `raw.raw_ext.open_food_facts_products`
 
 Selected columns (36):
+
 1. `product_code`
 2. `product_url`
 3. `last_modified_datetime`
@@ -89,10 +96,12 @@ Selected columns (36):
 ## 5) Curated model contract
 
 Catalogs:
+
 - `raw` (Hive connector for external raw CSV)
 - `warehouse` (Iceberg connector)
 
 Core tables:
+
 - staging: `warehouse.open_food_facts_stg.products_stg`
 - curated fact: `warehouse.open_food_facts_marts.fact_products_current`
 - dimensions:
@@ -100,17 +109,20 @@ Core tables:
   - `warehouse.open_food_facts_marts.dim_nutriscore`
 
 Marts:
+
 - `warehouse.open_food_facts_marts.mart_category_quality`
 - `warehouse.open_food_facts_marts.mart_brand_quality`
 - `warehouse.open_food_facts_marts.mart_country_profile`
 
 Partitioning:
+
 - staging `products_stg`: partitioned by `last_modified_month`
 - curated `fact_products_current`: partitioned by `last_modified_month`
 
 ## 6) Data quality contract
 
 Minimum quality rules:
+
 - `product_code` and `product_name` are mandatory for staging/fact.
 - `fact_products_current` keeps the latest row per `product_code`.
 - basic numeric sanity filters are applied (e.g., sugars/salt not negative).

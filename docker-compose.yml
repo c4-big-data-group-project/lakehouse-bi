@@ -134,6 +134,7 @@ services:
     hostname: "${GP2__TRINO__HOST_NAME?error}"
     networks:
       - "private"
+      - "wren"
     depends_on:
       hive-metastore:
         condition: "service_healthy"
@@ -146,3 +147,5 @@ volumes:
 
 networks:
   private: {}
+  wren:
+    external: true

@@ -1,11 +1,25 @@
 MODE ?= sample
 DATASET ?= open_food_facts
 
-up:
+create-wren-docker-network:
+	@if ! docker network ls | grep -q wren; then \
+		docker network create wren; \
+		echo "Created network: wren"; \
+	else \
+		echo "Network 'wren' already exists"; \
+	fi
+
+up: create-wren-docker-network
 	@docker compose up --build -d
 
 down:
 	@docker compose down
+
+up-wren: create-wren-docker-network
+	@docker compose --env-file ./wren/.env -f ./wren/docker-compose-wren.yml up --build -d
+
+down-wren:
+	@docker compose -f ./wren/docker-compose-wren.yml down
 
 etl-sample:
 	@python3 etl/scripts/download_dataset.py --mode sample --clean-extra

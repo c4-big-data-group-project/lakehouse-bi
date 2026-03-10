@@ -3,6 +3,7 @@ __pycache__/
 *.pyc
 logs
 .env
+.venv
 etl/data/
 etl/reports/*.md
 etl/manifests/*.json

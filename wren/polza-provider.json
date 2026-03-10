@@ -1,0 +1,6 @@
+{
+  "polza": {
+    "base_url": "https://api.polza.ai/v1",
+    "api_key_env": "POLZA_API_KEY"
+  }
+}
